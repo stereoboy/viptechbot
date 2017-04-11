@@ -3,33 +3,32 @@ from django.shortcuts import render
 from django.http import HttpResponse
 import json
 import urllib
+import telegrambot.telegramapi
+import infos
 # Create your views here.
 
-TOKEN = '270279298:AAFD3QcN5w3txqHj61K47CJhQ2dWrLNQ19k'
+TOKEN = infos.TOKEN
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
 
 def index(request):
-  if request.type == 'GET':
+  if request.method == 'GET':
     return HttpResponse("Welcome!")
 
 def me(request):
-  if request.type == 'GET':
-    return HttpResponse("me handler")
+  if request.method == 'GET':
+    return telegramapi.me()
 
 
 def updates(request):
-  if request.type == 'GET':
+  if request.method == 'GET':
     return HttpResponse("updates handler")
 
 
 def setwebhook(request):
-  if request.type == 'GET':
-    url=request.url
-    ret = json.load(urllib.urlopen(BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))
-    return HttpResponse(
-        json.dumps(ret),
-        content_type="application/json")
+  if request.method == 'GET':
+    url = request.GET.get('url')
+    return telegramapi.setwebhook(url)
 
 def webhook(request):
-  if request.type == 'POST':
-    return HttpREsponse("webhook handler")
+  if request.method == 'POST':
+    return telegramapi.webhook(request)
