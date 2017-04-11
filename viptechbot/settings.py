@@ -82,10 +82,10 @@ WSGI_APPLICATION = 'viptechbot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgres_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'viptechbot',
         'USER': 'viptech',
-        'PASSWORD': 'xxxxxxxx',
+        'PASSWORD': 'xxxxxxx',
         'HOST': 'localhost',
         'PORT': '',
     }
