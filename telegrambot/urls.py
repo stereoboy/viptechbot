@@ -6,6 +6,7 @@ urlpatterns = [
   url(r'^$', views.index, name='index'),
   url(r'^me$', views.me),
   url(r'^updates$', views.updates),
-  url(r'^set-webhook$', views.setwebhook),
+  url(r'^getwebhookinfo$', views.getwebhookinfo),
+  url(r'^setwebhook$', views.setwebhook),
   url(r'^webhook$', views.webhook),
 ] 

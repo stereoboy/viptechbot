@@ -1,23 +1,44 @@
-import urllib
+import urllib.request
+import urllib.parse
+import urllib.error
 from django.http import HttpResponse
 import logging
+import infos
+import json
+#
+# reference : http://bakyeono.net/post/2015-08-24-using-telegram-bot-api.html#2-%EB%B4%87%EC%9D%84-%EC%9C%84%ED%95%9C-%EC%84%9C%EB%B2%84-%EC%A4%80%EB%B9%84
+#
 
-# 봇이 응답할 명령어
+# setup logger
+logger = logging.getLogger('telegramapi')
+# remove local setup, follow default setting
+#logger.setLevel(logging.INFO)
+#hdlr = logging.FileHandler(infos.LOG_DIR + 'telegram.log')
+#hdlr = logging.StreamHandler()
+#hdlr.setLevel(logging.INFO)
+#formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+#hdlr.setFormatter(formatter)
+#logger.addHandler(hdlr)
+
+logger.info("setup done")
+
+# setup variable
+TOKEN = infos.TOKEN
+BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
+
 CMD_START     = '/start'
 CMD_STOP      = '/stop'
 CMD_HELP      = '/help'
 CMD_BROADCAST = '/broadcast'
 
-# 봇 사용법 & 메시지
-USAGE = u"""[사용법] 아래 명령어를 메시지로 보내거나 버튼을 누르시면 됩니다.
-/start - (봇 활성화)
-/stop  - (봇 비활성화)
-/help  - (이 도움말 보여주기)
+USAGE = u"""[usage]
+/start - ()
+/stop  - ()
+/help  - ()
 """
-MSG_START = u'봇을 시작합니다.'
-MSG_STOP  = u'봇을 정지합니다.'
+MSG_START = u'bot get started.'
+MSG_STOP  = u'bot is stopped'
 
-# 커스텀 키보드
 CUSTOM_KEYBOARD = [
     [CMD_START],
     [CMD_STOP],
@@ -89,9 +110,9 @@ def send_msg(chat_id, text, reply_to=None, no_preview=True, keyboard=None):
       })
     params['reply_markup'] = reply_markup
   try:
-    urllib.urlopen(BASE_URL + 'sendMessage', urllib.urlencode(params)).read()
+    urllib.request.urlopen(BASE_URL + 'sendMessage', urllib.parse.urlencode(params)).read()
   except Exception as e:
-    logging.exception(e)
+    logger.exception(e)
 
 def broadcast(text):
   u"""broadcast: 봇이 켜져 있는 모든 채팅에 메시지 발송
@@ -165,23 +186,58 @@ def process_cmds(msg):
   cmd_echo(chat_id, text, reply_to=msg_id)
   return
 
+def get_json_from_url(url, data=None):
+  json_data=None
+  try:
+    fp= urllib.request.urlopen(url, data)
+    data = fp.read()
+    http_info = fp.info()
+    encoding = http_info.get_content_charset('utf-8')
+    json_data = json.loads(data.decode(encoding))
+  except urllib.error.HTTPError as e:
+    logger.exception(e)
+    logger.exception(e.read())
+  return json_data
+
 def me():
-  return HttpResponse( json.dumps(json.load(urllib2.urlopen(BASE_URL + 'getMe'))),
+  url = BASE_URL + 'getMe'
+  json_data = get_json_from_url(url)
+  return HttpResponse( json.dumps(json_data),
       content_type="application/json")
 
-  def updates(request):
-    return HttpResponse( json.dumps(json.load(urllib2.urlopen(BASE_URL + 'getUpdates'))),
-        content_type="application/json")
+def updates():
+  url = BASE_URL + 'getUpdates'
+  json_data = get_json_from_url(url)
+  return HttpResponse( json.dumps(json_data),
+      content_type="application/json")
 
-    def setwebhook(url):
-      ret = json.load(urllib.urlopen(BASE_URL + 'setWebhook', urllib.urlencode({'url': url})))
+def getwebhookinfo():
+  url = BASE_URL + 'getWebhookInfo'
+  json_data = get_json_from_url(url)
+  logger.info("getWebhookInfo return:" + json.dumps(json_data))
+  return HttpResponse( json.dumps(json_data),
+      content_type="application/json")
+
+def setwebhook():
+  logger.info("setwebhook()")
+  url = BASE_URL + 'setWebhook'
+  #target_url = "http://" + infos.HOST + ":8000" + "/webhook"
+  target_url = "https://" + infos.HOST + "/telegrambot/webhook"
+  data = urllib.parse.urlencode({'url': target_url})
+  logger.info("data:" + data)
+  data = data.encode('utf-8')
+  logger.info("url:" + url)
+
+  json_data = get_json_from_url(url, data)
+  logger.info("setWebhook return:" + json.dumps(json_data))
   return HttpResponse(
-      json.dumps(ret),
+      json.dumps(json_data),
       content_type="application/json")
 
-  def webhook(request):
-    logging.error(request.body)
+def webhook(request):
+  logger.error(request.body)
   body = json.loads(request.body)
+  logger.info("setWebhook return:" + json.dumps(body))
   #self.response.write(json.dumps(body))
   process_cmds(body['message'])
   return HttpResponse(
