@@ -1,0 +1,12 @@
+[Unit]
+Description=gunicorn daemon
+After=network.target
+
+[Service]
+User=XXX
+Group=www-data
+WorkingDirectory=/home/XXX/work/viptechbot
+ExecStart=/home/XXX/work/viptechbotenv/bin/gunicorn --workers 3 --bind unix:/home/XXX/work/viptechbot/viptechbot.sock viptechbot.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
