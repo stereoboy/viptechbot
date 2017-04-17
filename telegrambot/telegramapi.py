@@ -5,6 +5,8 @@ from django.http import HttpResponse
 import logging
 import infos
 import json
+import re
+
 #
 # reference : http://bakyeono.net/post/2015-08-24-using-telegram-bot-api.html#2-%EB%B4%87%EC%9D%84-%EC%9C%84%ED%95%9C-%EC%84%9C%EB%B2%84-%EC%A4%80%EB%B9%84
 #
@@ -74,7 +76,7 @@ def get_enabled(chat_id):
 #  if es:
 #    return es.enabled
 #  return False
-  pass
+  return True
 
 def get_enabled_chats():
   u"""get_enabled: 봇이 활성화된 채팅 리스트 반환
@@ -109,8 +111,12 @@ def send_msg(chat_id, text, reply_to=None, no_preview=True, keyboard=None):
       'selective': (reply_to != None),
       })
     params['reply_markup'] = reply_markup
+
   try:
-    urllib.request.urlopen(BASE_URL + 'sendMessage', urllib.parse.urlencode(params)).read()
+    msg = urllib.parse.urlencode(params)
+    logger.info('sendmessage(' + msg + ")")
+    encoded_msg = msg.encode('utf-8')
+    urllib.request.urlopen(BASE_URL + 'sendMessage', encoded_msg)
   except Exception as e:
     logger.exception(e)
 
@@ -234,10 +240,35 @@ def setwebhook():
       json.dumps(json_data),
       content_type="application/json")
 
+def resetwebhook():
+  logger.info("resetwebhook()")
+ 
+  ret = {}
+  url = BASE_URL + 'deleteWebhook'
+  json_data = get_json_from_url(url)
+  ret['deleteWebhook'] = json_data
+  
+  url = BASE_URL + 'setWebhook'
+  #target_url = "http://" + infos.HOST + ":8000" + "/telegrambot/webhook"
+  target_url = "https://" + infos.HOST + "/telegrambot/webhook"
+  data = urllib.parse.urlencode({'url': target_url})
+  logger.info("data:" + data)
+  data = data.encode('utf-8')
+  logger.info("url:" + url)
+
+  json_data = get_json_from_url(url, data)
+  ret['setWebhook'] = json_data
+  logger.info("setWebhook return:" + json.dumps(ret))
+  return HttpResponse(
+      json.dumps(ret),
+      content_type="application/json")
+
 def webhook(request):
-  logger.error(request.body)
-  body = json.loads(request.body)
-  logger.info("setWebhook return:" + json.dumps(body))
+  #logger.info("webhook() token:" + token)
+  json_data = request.body.decode('utf-8')
+  logger.info("webhook() request.body=" + json_data)
+  body = json.loads(json_data)
+  #logger.info("setWebhook return:" + json.dumps(body))
   #self.response.write(json.dumps(body))
   process_cmds(body['message'])
   return HttpResponse(

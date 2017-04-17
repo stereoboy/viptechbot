@@ -5,6 +5,8 @@ import json
 import urllib
 import telegrambot.telegramapi as telegramapi
 import infos
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+
 # Create your views here.
 
 def index(request):
@@ -29,8 +31,11 @@ def setwebhook(request):
     #url = request.GET.get('url')
     return telegramapi.setwebhook()
 
+def resetwebhook(request):
+  if request.method == 'GET':
+    #url = request.GET.get('url')
+    return telegramapi.resetwebhook()
+
 def webhook(request):
-  print("webhook")
   if request.method == 'POST':
-    print("webhookPOST")
     return telegramapi.webhook(request)
