@@ -22,7 +22,7 @@ logger = logging.getLogger('telegramapi')
 #hdlr.setFormatter(formatter)
 #logger.addHandler(hdlr)
 
-logger.info("setup done")
+logger.info("telegrambot setup done")
 
 # setup variable
 TOKEN = infos.TOKEN
