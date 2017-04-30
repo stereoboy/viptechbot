@@ -179,7 +179,7 @@ def prepare_photo(photo_list):
   return path, f
 
 def save_message(msg):
-  user_id = str(msg['chat']['id'])
+  user_id = "telegram_" + str(msg['chat']['id'])
   if User.objects.filter(user_id=user_id).exists():
     user = User.objects.get(user_id=user_id)
     logger.info("This user is already registered:" + user_id)
