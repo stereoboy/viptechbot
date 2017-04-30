@@ -2,10 +2,14 @@ import urllib.request
 import urllib.parse
 import urllib.error
 from django.http import HttpResponse
+from django.core.files import File
 import logging
 import infos
 import json
+import os
 import re
+
+from common.models import User, TextMessage, Image, Message
 
 #
 # reference : http://bakyeono.net/post/2015-08-24-using-telegram-bot-api.html#2-%EB%B4%87%EC%9D%84-%EC%9C%84%ED%95%9C-%EC%84%9C%EB%B2%84-%EC%A4%80%EB%B9%84
@@ -26,7 +30,9 @@ logger.info("telegrambot setup done")
 
 # setup variable
 TOKEN = infos.TOKEN
-BASE_URL = 'https://api.telegram.org/bot' + TOKEN + '/'
+BOTAPI_URL = 'https://api.telegram.org/'
+BASE_URL = BOTAPI_URL + 'bot' + TOKEN + '/'
+FILE_URL = BOTAPI_URL + 'file/' + 'bot' + TOKEN + '/'
 
 CMD_START     = '/start'
 CMD_STOP      = '/stop'
@@ -164,6 +170,40 @@ def cmd_echo(chat_id, text, reply_to):
   """
   send_msg(chat_id, text, reply_to=reply_to)
 
+def prepare_photo(photo_list):
+  # selection
+  photo = photo_list[-2]
+
+  file_id = photo['file_id']
+  path, f = getfile(file_id)
+  return path, f
+
+def save_message(msg):
+  user_id = str(msg['chat']['id'])
+  if User.objects.filter(user_id=user_id).exists():
+    user = User.objects.get(user_id=user_id)
+    logger.info("This user is already registered:" + user_id)
+  else:
+    first_name = msg['chat']['first_name']
+    last_name = msg['chat']['last_name']
+    nick_name = ""
+    user = User.objects.create(user_id=user_id, first_name=first_name, last_name=last_name, nick_name=nick_name)
+
+  message = Message(user=user)
+
+  if msg.get('text'):
+    text = TextMessage.objects.create(text=msg['text'])
+    message.text = text
+  if msg.get('photo'):
+    path, f = prepare_photo(msg['photo'])
+    photo = Image()
+
+    image_file = File(f)
+    photo.image.save(os.path.basename(path), image_file)
+    message.image = photo
+
+  message.save()
+
 def process_cmds(msg):
   u"""사용자 메시지를 분석해 봇 명령을 처리
   chat_id: (integer) 채팅 ID
@@ -172,6 +212,9 @@ def process_cmds(msg):
   msg_id = msg['message_id']
   chat_id = msg['chat']['id']
   text = msg.get('text')
+
+  save_message(msg)
+
   if (not text):
     return
   if CMD_START == text:
@@ -201,8 +244,14 @@ def get_json_from_url(url, data=None):
     encoding = http_info.get_content_charset('utf-8')
     json_data = json.loads(data.decode(encoding))
   except urllib.error.HTTPError as e:
+    logger.exception(url)
     logger.exception(e)
     logger.exception(e.read())
+  except urllib.URLError as e:
+    logger.exception(url)
+    logger.exception(e)
+    logger.exception(e.read())
+  
   return json_data
 
 def me():
@@ -242,12 +291,12 @@ def setwebhook():
 
 def resetwebhook():
   logger.info("resetwebhook()")
- 
+
   ret = {}
   url = BASE_URL + 'deleteWebhook'
   json_data = get_json_from_url(url)
   ret['deleteWebhook'] = json_data
-  
+
   url = BASE_URL + 'setWebhook'
   #target_url = "http://" + infos.HOST + ":8000" + "/telegrambot/webhook"
   target_url = "https://" + infos.HOST + "/telegrambot/webhook"
@@ -274,3 +323,52 @@ def webhook(request):
   return HttpResponse(
       json.dumps(body),
       content_type="application/json")
+
+#def download_from_url(file_path):
+#  download_url = file_path
+#  try:
+#    f = urllib.urlopen(download_url)
+#    logger.info("downloading" + file_path + "...")
+#
+#    with open(file_name, "wb") as local_file:
+#      local_file.write(f.read())
+#    f.close()
+#
+#  except urllib.HTTPError as e:
+#    print("HTTP Error:{}, {}".format(e.code, url))
+#  except urllib.URLError as e:
+#    print("URL Error:{}, {}".format(e.reason, url))
+
+def read_file_from_url(url):
+  try:
+    f = urllib.request.urlopen(url)
+    logger.info("downloading from " + url + " ...")
+    return f
+#    with open(file_name, "wb") as local_file:
+#      local_file.write(f.read())
+#    f.close()
+
+  except urllib.HTTPError as e:
+    logger.exception(url)
+    logger.exception(e)
+    logger.exception(e.read())
+  except urllib.URLError as e:
+    logger.exception(url)
+    logger.exception(e)
+    logger.exception(e.read())
+
+def getfile(file_id):
+  logger.info("getfile(" + file_id + ")")
+  url = BASE_URL + 'getFile'
+  data = urllib.parse.urlencode({'file_id': file_id})
+  logger.info("data:" + data)
+  data = data.encode('utf-8')
+  logger.info("url:" + url)
+
+  json_data = get_json_from_url(url, data)
+  logger.info("getFile return:" + json.dumps(json_data))
+  file_path = json_data['result']['file_path']
+
+  f = read_file_from_url(FILE_URL + file_path)
+
+  return file_path, f

@@ -12,4 +12,5 @@ urlpatterns = [
   url(r'^resetwebhook$', views.resetwebhook),
   #url(r'^webhook/(?P<token>[-_:a-zA-Z0-9]+)/$', csrf_exempt(views.webhook)),
   url(r'^webhook$', csrf_exempt(views.webhook)), #telegram does not use csrf
+  #url(r'^monitor/(?P<user_id>.+)$', csrf_exempt(views.monitor)),
 ]
